@@ -9,27 +9,42 @@ function GitHubCallback({ onLogin }) {
     const handleCallback = async () => {
       try {
         // URL'den parametreleri al
-        const token = searchParams.get('token');
         const username = searchParams.get('username');
         const userId = searchParams.get('userId');
+        const accessToken = searchParams.get('accessToken');
+        const refreshToken = searchParams.get('refreshToken');
 
-        if (token && username) {
-          // Token ve kullanıcı bilgilerini localStorage'a kaydet
-          localStorage.setItem('token', token);
+        // Eğer URL'de token varsa cookie'ye kaydet (Backend set etmediyse)
+        if (accessToken) {
+          document.cookie = `access_token=${accessToken}; path=/; max-age=900; SameSite=Lax`; // 15 dk
+        }
+        if (refreshToken) {
+          document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800; SameSite=Lax`; // 7 gün
+        }
+
+        // Token artık cookie'de, sadece username kaydediyoruz
+        if (username) {
           localStorage.setItem('username', username);
-          
+
           // Kullanıcı nesnesini oluştur ve kaydet
-          const user = {
-            id: userId,
-            username: username
-          };
-          localStorage.setItem('user', JSON.stringify(user));
+          if (userId) {
+            const user = {
+              id: userId,
+              username: username
+            };
+            localStorage.setItem('user', JSON.stringify(user));
+          }
 
           onLogin(); // isLoggedIn state'ini güncelle
           navigate('/');
         } else {
-          console.error('Token veya username bulunamadı');
-          navigate('/login');
+          console.error('Username bulunamadı. Parametreler:', Object.fromEntries(searchParams.entries()));
+          // Hata olsa bile belki token vardır, ana sayfaya gitmeyi dene
+          if (accessToken || document.cookie.includes('access_token')) {
+            navigate('/');
+          } else {
+            navigate('/login');
+          }
         }
       } catch (error) {
         console.error('Giriş hatası:', error);

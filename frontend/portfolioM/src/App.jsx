@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import AddProject from './pages/AddProject';
 import ProjectEdit from './pages/ProjectEdit';
 import ProjectDetail from './pages/ProjectDetail';
+import { fetchUserData, logoutUser } from './server/api';
 
 import './App.css';
 import Projects from './pages/Projects';
@@ -32,10 +33,10 @@ function App() {
 
   useEffect(() => {
     const checkUserProfile = async () => {
-      const token = localStorage.getItem('token');
+      // Artık username kontrolü yapıyoruz, token cookie'de
       const username = localStorage.getItem('username');
 
-      if (token && username) {
+      if (username) {
         setIsLoggedIn(true);
         try {
           const response = await fetchUserData(username);
@@ -53,9 +54,9 @@ function App() {
           }
         } catch (error) {
           console.error('Kullanıcı bilgileri alınamadı:', error);
-          if (error.message === 'Kullanıcı bilgileri alınamadı') {
-            handleLogout(); // Token geçersizse çıkış yap
-          }
+          // Hata durumunda logout yapma, sadece logla
+          // fetchUserData public endpoint, 401 dönmeyecektir
+          // Eğer gerçekten bir sorun varsa, kullanıcı manuel olarak logout yapabilir
         }
       } else {
         setIsLoggedIn(false);
@@ -83,12 +84,19 @@ function App() {
     setIsLoggedIn(true);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('username');
-    setIsLoggedIn(false);
-    window.location.reload(); // Sayfayı yenile
+  const handleLogout = async () => {
+    try {
+      // Logout API çağrısı yap (cookie'leri temizlemek için)
+      const { logoutUser } = await import('./server/api');
+      await logoutUser();
+    } catch (error) {
+      console.error('Logout hatası:', error);
+      // Hata durumunda da temizlik yap
+      localStorage.removeItem('user');
+      localStorage.removeItem('username');
+      setIsLoggedIn(false);
+      window.location.href = '/login';
+    }
   };
 
   return (
